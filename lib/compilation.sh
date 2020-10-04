@@ -146,6 +146,8 @@ compile_kernel()
 
 	echo -e "\e[1;31m Complete kernel compilation ...\e[0m"
 	compile_module
+	compile_sunxi_tools
+	compile_sunxi_mali
 }
 
 compile_module(){
@@ -164,4 +166,72 @@ compile_module(){
 
 	#whiptail --title "OrangePi Build System" --msgbox \
 	#	"Build Kernel OK. The path of output file: ${BUILD}" 10 80 0
+}
+
+compile_sunxi_tools(){
+	SUNXI_TOOLS="${ROOT}/sunxi-tools"
+	
+	if [ ! -d $SUNXI_TOOLS ]; then
+		cd $ROOT
+	    git clone https://github.com/michailgm/sunxi-tools.git
+	fi
+
+	cd $SUNXI_TOOLS
+	
+	# install module
+	echo -e "\e[1;31m Start installing sunxi tools ... \e[0m"
+	make -C $SUNXI_TOOLS CROSS_COMPILE=$TOOLS -j${CORES} all
+	make -C $SUNXI_TOOLS CROSS_COMPILE=$TOOLS -j${CORES} DESTDIR=$BUILD install-all
+	echo -e "\e[1;31m Complete sunxi tools installation ... \e[0m"
+}
+
+compile_sunxi_mali(){
+	SUNXI_MALI="${ROOT}/sunxi-mali"
+	
+	# if [ -d $SUNXI_MALI ]; then
+		# rm -f -r $SUNXI_MALI
+	# fi
+	
+	if [ ! -d $SUNXI_MALI ]; then
+		cd $ROOT
+	    git clone https://github.com/michailgm/sunxi-mali.git
+	fi
+
+	apt-get -y install quilt
+
+	cd $SUNXI_MALI
+		
+	# install module
+	echo -e "\e[1;31m Start installing sunxi mali driver ... \e[0m"
+	export CROSS_COMPILE=$TOOLS
+	export KDIR=$LINUX
+	export INSTALL_MOD_PATH=$BUILD
+	export ARCH=$ARCH
+	
+	./build.sh -r $MALI_REL -j ${CORES} -b
+	./build.sh -r $MALI_REL -i
+
+	echo -e "\e[1;31m Complete sunxi mali installation ... \e[0m"
+	
+	install_mali_blobs
+}
+
+install_mali_blobs(){
+	MALI_BLOBS="${ROOT}/mali-blobs"
+	
+	if [ ! -d $MALI_BLOBS ]; then
+		cd $ROOT
+	    git clone https://github.com/free-electrons/mali-blobs.git
+	fi
+
+	if [ ! -d $BUILD/usr/lib ]; then
+		mkdir -p $BUILD/usr/lib
+	fi
+	
+	cd $MALI_BLOBS
+	
+	# install module
+	echo -e "\e[1;31m Start installing mali blobs ... \e[0m"
+	cp -a $MALI_REL/$ARCH/fbdev/lib* $BUILD/usr/lib	
+	echo -e "\e[1;31m Complete mali blobs installation ... \e[0m"
 }

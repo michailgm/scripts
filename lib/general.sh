@@ -209,7 +209,11 @@ select_distro()
 		--menu "$MENUSTR" 20 60 10 --cancel-button Finish --ok-button Select \
                 "0"   "[$SOURCES]Change repository server" \
                 "1"   "Ubuntu Xenial" \
-                "2"   "Debian Stretch" \
+                "2"   "Ubuntu Bionic" \
+                "3"   "Ubuntu Focal" \
+                "4"   "Debian Stretch" \
+                "5"   "Debian Buster" \
+                "6"   "Debian Bullseye" \
                 3>&1 1>&2 2>&3)
 
 		case "${OPTION}" in
@@ -219,21 +223,30 @@ select_distro()
 			"1") 
 				DISTRO="xenial"
 				DISTRO_NUM="16.04.6"
-	                     	OS="ubuntu"
+	            OS="ubuntu"
 				;;
-			#"2") 
-			#	DISTRO="bionic"
-			#	DISTRO_NUM="18.04"
-	                #     	OS="ubuntu"
-			#	;;
-		 	"2")     
-	                	DISTRO="stretch"
-	                	OS="debian"
+			"2") 
+				DISTRO="bionic"
+				DISTRO_NUM="18.04"
+	           	OS="ubuntu"
 				;;
-		 	#"4")     
-	                #	DISTRO="buster"
-	                #	OS="debian"
-			#	;;
+			"3") 
+				DISTRO="focal"
+				DISTRO_NUM="20.04"
+	           	OS="ubuntu"
+				;;
+		 	"4")     
+				DISTRO="stretch"
+				OS="debian"
+				;;
+		 	"5")     
+				DISTRO="buster"
+				OS="debian"
+				;;
+		 	"6")     
+				DISTRO="bullseye"
+				OS="debian"
+				;;
 			*)
 				;;
 		esac
@@ -266,10 +279,48 @@ select_sources()
 
 	exitstatus=$?
 
-        if [ $exitstatus = 0 ]; then
+	if [ $exitstatus = 0 ]; then
 		echo "The chosen server is:" $SOURCES
 		select_distro
+		select_mali_realease
 	fi
+}
+
+select_mali_realease()
+{
+	MENUSTR="Mali Utgard GPU Kernel Driver for Allwinner/sunXi platform releases"
+	MALI=$(whiptail --title "OrangePi Build System" \
+		--menu "$MENUSTR" 20 60 10 --cancel-button Finish --ok-button Select \
+                "0"   "r5p0" \
+                "1"   "r6p0" \
+                "2"   "r6p2" \
+                "3"   "r7p0" \
+                "4"   "r8p1" \
+                "5"   "r9p0" \
+                3>&1 1>&2 2>&3)
+
+		case "${MALI}" in
+			"0") 
+				MALI_REL="r5p0"
+				;;
+			"1") 
+				MALI_REL="r6p0" 
+				;;
+			"2") 
+				MALI_REL="r6p2"
+				;;
+			"3") 
+				MALI_REL="r7p0"
+				;;
+		 	"4")     
+				MALI_REL="r8p1"
+				;;
+		 	"5")     
+				MALI_REL="r9p0"
+				;;
+			*)
+				;;
+		esac
 }
 
 pack_error()

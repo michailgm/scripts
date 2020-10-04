@@ -15,6 +15,7 @@ PACK_OUT="${BUILD}/pack"
 OS=""
 BT=""
 CHIP=""
+CHIP_BOARD=""
 ARCH=""
 DISTRO=""
 ROOTFS=""
@@ -23,8 +24,12 @@ UBOOT_PATH=""
 BUILD_KERNEL=""
 BUILD_MODULE=""
 
+BOARD=""
+BOARD_NAME=""
+MALI_REL="r6p2"
+
 VER="v2.0.7"
-SOURCES="TSINGHUA"
+SOURCES="OFCL"
 METHOD="download"
 KERNEL_NAME="linux"
 UNTAR="bsdtar -xpf"
@@ -64,8 +69,16 @@ case "${PLATFORM}" in
 			3>&1 1>&2 2>&3)
 
 		case "${OPTION}" in 
-			"0") BOARD="r1" ;;
-			"1") BOARD="zero" ;;
+			"0") 
+				BOARD="r1"
+				BOARD_NAME="OrangePi R1"
+				;;
+				
+			"1") 
+				BOARD="zero" 
+				BOARD_NAME="OrangePi Zero"
+				;;
+				
 			*)
 			echo -e "\e[1;31m Pls select correct board \e[0m"
 			exit 2 ;;
@@ -100,14 +113,46 @@ case "${PLATFORM}" in
 			3>&1 1>&2 2>&3)
 
 		case "${OPTION}" in 
-			"0") BOARD="2" ;;
-			"1") BOARD="pc"	;;
-			"2") BOARD="one" ;;
-			"3") BOARD="lite" ;;
-			"4") BOARD="plus" ;;
-			"5") BOARD="plus2e" ;;
-			"6") BOARD="pcplus" ;;
-			"7") BOARD="zeroplus2h3" ;;
+			"0") 
+				BOARD="2" 
+				BOARD_NAME="OrangePi 2"
+				;;
+				
+			"1") 
+				BOARD="pc"	
+				BOARD_NAME="OrangePi Pc"
+				;;
+				
+			"2") 
+				BOARD="one" 
+				BOARD_NAME="OrangePi One"
+				;;
+				
+			"3") 
+				BOARD="lite" 
+				BOARD_NAME="OrangePi Lite"
+				;;
+				
+			"4") 
+				BOARD="plus" 
+				BOARD_NAME="OrangePi Plus"
+				;;
+				
+			"5") 
+				BOARD="plus2e" 
+				BOARD_NAME="OrangePi Plus 2e"
+				;;
+				
+			"6") 
+				BOARD="pcplus" 
+				BOARD_NAME="OrangePi Pc Plus"
+				;;
+				
+			"7") 
+				BOARD="zeroplus2h3" 
+				BOARD_NAME="OrangePi Zero Plus 2"
+				;;
+				
 			*)
 			echo -e "\e[1;31m Pls select correct board \e[0m"
 			exit 2 ;;
@@ -134,14 +179,30 @@ case "${PLATFORM}" in
 			"0"  "OrangePi Pc 2" \
 			"1"  "OrangePi Prime" \
 			"2"  "OrangePi Zero Plus" \
-			"3"  "OrangePi Zero Plus 2 " \
+			"3"  "OrangePi Zero Plus 2" \
 		        3>&1 1>&2 2>&3)
 
 		case "${OPTION}" in 
-			"0") BOARD="pc2" ;;
-			"1") BOARD="prime" ;;
-			"2") BOARD="zeroplus" ;;
-			"3") BOARD="zeroplus2h5" ;;
+			"0") 
+				BOARD="pc2" 
+				BOARD_NAME="OrangePi Pc 2"
+				;;
+				
+			"1") 
+				BOARD="prime" 
+				BOARD_NAME="OrangePi Prime"
+				;;
+				
+			"2") 
+				BOARD="zeroplus" 
+				BOARD_NAME="OrangePi Zero Plus"
+				;;
+				
+			"3") 
+				BOARD="zeroplus2h5" 
+				BOARD_NAME="OrangePi Zero Plus 2"
+				;;
+				
 			*) 
 			echo -e "\e[1;31m Pls select correct board \e[0m"
 			exit 2 ;;
@@ -236,6 +297,7 @@ OPTION=$(whiptail --title "OrangePi Build System" \
 case "${OPTION}" in 
 	"0")
 		select_distro
+		select_mali_realease
 		compile_uboot
 		compile_kernel
 		build_rootfs
@@ -246,6 +308,7 @@ case "${OPTION}" in
 		;;
 	"1")
 		select_distro
+		select_mali_realease
 		build_rootfs
 		whiptail --title "OrangePi Build System" --msgbox "Succeed to build rootfs" \
 			10 40 0 --ok-button Continue

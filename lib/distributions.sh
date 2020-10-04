@@ -39,7 +39,7 @@ do_chroot() {
 	chroot "$DEST" mount -t sysfs sys /sys || true
 	chroot "$DEST" $cmd
 	chroot "$DEST" umount /sys
-	chroot "$DEST" umount /proc
+	chroot "$DEST" umount -fR /proc
 
 	# Clean up
 	rm -f "${DEST}${QEMU}"
@@ -246,60 +246,60 @@ prepare_env()
 	trap cleanup EXIT
 
 	case $DISTRO in
-		"xenial" | "bionic")
+		"xenial" | "bionic" | "focal")
 			case $SOURCES in
 				"OFCL")
-			       	        SOURCES="http://ports.ubuntu.com"
+					SOURCES="http://ports.ubuntu.com"
 					ROOTFS="http://cdimage.ubuntu.com/ubuntu-base/releases/${DISTRO}/release/ubuntu-base-${DISTRO_NUM}-base-${ROOTFS_ARCH}.tar.gz"
-				        ;;
+					;;
 				"ALIYUN")
-				        SOURCES="http://mirrors.aliyun.com/ubuntu-ports"
+					SOURCES="http://mirrors.aliyun.com/ubuntu-ports"
 					ROOTFS="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cdimage/ubuntu-base/releases/${DISTRO}/release/ubuntu-base-${DISTRO_NUM}-base-${ROOTFS_ARCH}.tar.gz"
-				        ;;
+					;;
 				"USTC")
 					SOURCES="http://mirrors.ustc.edu.cn/ubuntu-ports"
 					ROOTFS="https://mirrors.ustc.edu.cn/ubuntu-cdimage/ubuntu-base/releases/${DISTRO}/release/ubuntu-base-${DISTRO_NUM}-base-${ROOTFS_ARCH}.tar.gz"
-				        ;;
+					;;
 				"TSINGHUA")
-		                        SOURCES="http://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"
+					SOURCES="http://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"
 					ROOTFS="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cdimage/ubuntu-base/releases/${DISTRO}/release/ubuntu-base-${DISTRO_NUM}-base-${ROOTFS_ARCH}.tar.gz"
-				        ;;
+					;;
 				"HUAWEI")
-		                        SOURCES="http://mirrors.huaweicloud.com/ubuntu-ports"
+					SOURCES="http://mirrors.huaweicloud.com/ubuntu-ports"
 					ROOTFS="https://mirrors.huaweicloud.com/ubuntu-cdimage/ubuntu-base/releases/${DISTRO}/release/ubuntu-base-${DISTRO_NUM}-base-${ROOTFS_ARCH}.tar.gz"
-				        ;;
+					;;
 				*)
 					SOURCES="http://ports.ubuntu.com"
 					ROOTFS="http://cdimage.ubuntu.com/ubuntu-base/releases/${DISTRO}/release/ubuntu-base-${DISTRO_NUM}-base-${ROOTFS_ARCH}.tar.gz"
 					;;
 			esac
 			;;
-		"stretch" | "buster")
+		"stretch" | "buster" | "bullseye")
 			ROOTFS="${DISTRO}-base-${ARCH}.tar.gz"
 			METHOD="debootstrap"
 
 			case $SOURCES in
-		                "OFCL")
-		                        SOURCES="http://ftp.debian.org/debian"
-		                        ;;
+				"OFCL")
+					SOURCES="http://ftp.debian.org/debian"
+					;;
 
 				"ALIYUN")
 					SOURCES="http://mirrors.aliyun.com/debian"
 					;;
 
 				"USTC")
-		                        SOURCES="http://mirrors.ustc.edu.cn/debian"
+					SOURCES="http://mirrors.ustc.edu.cn/debian"
 					;;
 
-			       	"TSINGHUA")
-		                        SOURCES="https://mirrors.tuna.tsinghua.edu.cn/debian"
-		                        ;;
-			       	"HUAWEI")
-		                        SOURCES="https://mirrors.huaweicloud.com/debian"
+				"TSINGHUA")
+					SOURCES="https://mirrors.tuna.tsinghua.edu.cn/debian"
+					;;
+				"HUAWEI")
+					SOURCES="https://mirrors.huaweicloud.com/debian"
 					;;
 				*)
 					SOURCES="http://httpredir.debian.org/debian"
-		                        ;;
+					;;
 		        esac
 			;;
 		*)
@@ -330,22 +330,28 @@ prepare_env()
 
 prepare_rootfs_server()
 {
-
 	DEBUSER="orangepi"
 
-	rm "$DEST/etc/resolv.conf"
+	if [ -f $DEST/etc/resolv.conf ]; then
+		rm -f $DEST/etc/resolv.conf
+	fi
+	
 	cp /etc/resolv.conf "$DEST/etc/resolv.conf"
-	rm -rf "$DEST/etc/apt/sources.list.d/proposed.list"
+	
+	if [ -f $DEST/etc/apt/sources.list.d/proposed.list ]; then
+		rm -rf $DEST/etc/apt/sources.list.d/proposed.list
+	fi
+	
 	add_${OS}_apt_sources $DISTRO
 
 	case "${DISTRO}" in
 
-		"xenial" | "bionic")
-			EXTRADEBS="software-properties-common libjpeg8-dev usbmount ubuntu-minimal ifupdown"
+		"xenial" | "bionic" | "focal")
+			EXTRADEBS="software-properties-common libjpeg8-dev usbmount ubuntu-minimal"
 			;;
 			
-		"stretch" | "buster")
-			EXTRADEBS="sudo net-tools g++ libjpeg-dev" 
+		"stretch" | "buster" | "bullseye")
+			EXTRADEBS="initscripts software-properties-common sudo libjpeg-dev" 
 			;;
 
 		*)	
@@ -354,13 +360,80 @@ prepare_rootfs_server()
 			;;
 	esac
 
+	case "${DISTRO}" in
+
+		"xenial")
+			EXTRADEBS="${EXTRADEBS} libmpfr4 libisl15 libxtables11 ntfs-config hostap-utils"
+			LLVM_V=""
+			;;
+			
+		"bionic")
+			EXTRADEBS="${EXTRADEBS} libmpfr6 libisl19 libxtables12 ntfs-config"
+			LLVM_V="10"
+			;;
+			
+		"focal")
+			EXTRADEBS="${EXTRADEBS} libmpfr6 libisl22 libxtables12"
+			LLVM_V="10"
+			;;
+			
+		"stretch")
+			EXTRADEBS="${EXTRADEBS} libmpfr4 libisl15 libxtables12 ntfs-config hostap-utils"
+			LLVM_V="7"
+			;;
+
+		"buster")
+			EXTRADEBS="${EXTRADEBS} libmpfr6 libisl19 libxtables12" 
+			LLVM_V="7"
+			;;
+
+		"bullseye")
+			EXTRADEBS="${EXTRADEBS} libmpfr6 libisl22 libxtables12" 
+			LLVM_V="10"
+			;;
+
+		*)	
+			echo "Unknown DISTRO=$DISTRO"
+			exit 2
+			;;		
+	esac
+	
+	MANUFACTURER="Manufacturer: Xunlong"
+	BRAND="Brand: OrangePi"
+	BOARDNAME="Board name: ${BOARD_NAME}"
+	ARCHITECTURE="Architecture: ${ARCH}"
+	MAINCHIP="Main chip: ${CHIP}"
+	BOARDCHIP="Board chip: ${CHIP_BOARD}"
+	
 	cat > "$DEST/second-phase" <<EOF
 #!/bin/bash
+apt-get update -y
+apt-get install -y locales-all
+
+export LANG=en_US.UTF-8 
+export LANGUAGE=en_US.UTF-8
+export LC_CTYPE='en_US.UTF-8'
+export LC_NUMERIC=en_US.UTF-8
+export LC_TIME=en_US.UTF-8
+export LC_COLLATE='en_US.UTF-8'
+export LC_MONETARY=en_US.UTF-8
+export LC_MESSAGES='en_US.UTF-8'
+export LC_PAPER=en_US.UTF-8
+export LC_NAME=en_US.UTF-8
+export LC_ADDRESS=en_US.UTF-8
+export LC_TELEPHONE=en_US.UTF-8
+export LC_MEASUREMENT=en_US.UTF-8
+export LC_IDENTIFICATION=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 export DEBIAN_FRONTEND=noninteractive
 locale-gen en_US.UTF-8
 
-apt-get -y update
-apt-get -y --no-install-recommends install dosfstools curl xz-utils iw rfkill wireless-tools wpasupplicant openssh-server alsa-utils rsync u-boot-tools vim parted network-manager git autoconf gcc libtool libsysfs-dev pkg-config libdrm-dev xutils-dev hostapd dnsmasq apt-transport-https man subversion imagemagick libv4l-dev cmake bluez python3-pip python3-setuptools dialog expect bc cpufrequtils figlet toilet lsb-core $EXTRADEBS
+apt-get -y install openssh-server
+apt-get -y install python3-pip python3-setuptools
+
+echo "Installing $EXTRADEBS"
+apt-get -y --no-install-recommends install $EXTRADEBS
 
 apt-get install -f
 apt-get -y remove --purge ureadahead
@@ -376,12 +449,268 @@ usermod -a -G video $DEBUSER
 usermod -a -G plugdev $DEBUSER
 apt-get -y autoremove
 apt-get clean
-EOF
-	chmod +x "$DEST/second-phase"
-	do_chroot /second-phase
-	rm -f "$DEST/second-phase"
-        rm -f "$DEST/etc/resolv.conf"
 
+export BOARDINFO="/etc/board_info"
+echo -e "$MANUFACTURER" > \$BOARDINFO
+echo -e "$BRAND" >> \$BOARDINFO
+echo -e "$BOARDNAME" >> \$BOARDINFO
+echo -e "$ARCHITECTURE" >> \$BOARDINFO
+echo -e "$MAINCHIP" >> \$BOARDINFO
+echo -e "$BOARDCHIP" >> \$BOARDINFO
+
+EOF
+
+if [ ! -f $ROOT/jool-4.1.3.tar.gz ]; then
+	cd $ROOT
+	wget https://jool.mx/download/jool-4.1.3.tar.gz
+fi
+
+cd $ROOT
+tar xvf jool-4.1.3.tar.gz
+
+if [ ! -d /usr/local/src ]; then
+	mkdir -p /usr/local/src
+fi
+
+cp $ROOT/jool-4.1.3 $DEST/usr/local/src/ -rfa
+rm -fr $ROOT/jool-4.1.3
+
+	cat > "$DEST/install_packages" <<EOF
+#!/bin/bash
+
+export LOGFILE="/root/install_packages.log"
+
+install_package() {
+	export DEBIAN_FRONTEND=noninteractive 
+	apt-get -y -qq install \$1
+
+	if [ \$? -ne 0 ]; then
+		echo -e "\${1} - fail" >> \$LOGFILE
+	else
+		echo -e "\${1} - success" >> \$LOGFILE
+	fi
+}
+
+echo -n "" > \$LOGFILE
+
+declare -a List=(
+			"geoip-database"
+			"iputils-arping"
+			"arping"
+			"autotools-dev"
+			"automake"
+			"libnl-genl-3-dev"
+			"resolvconf"
+            "build-essential"
+			"dosfstools"
+			"xz-utils"
+			"alsa-utils"
+			"rsync"
+			"u-boot-tools"
+			"vim parted"
+			"libsysfs-dev"
+			"libdrm-dev"
+			"xutils-dev"
+			"man"
+			"subversion"
+			"imagemagick"
+			"libv4l-dev"
+			"cmake"
+			"dialog"
+			"expect"
+			"bc"
+			"cpufrequtils"
+			"figlet"
+			"toilet"
+			"lsb-core"
+			"genisoimage"
+            "util-linux"
+            "bluetooth"
+            "bluez"
+            "bluez-tools"
+            "rfkill"
+            "dirmngr"
+            "gnupg"
+            "apt-transport-https"
+            "ca-certificates"
+            "apt-offline"
+            "autoconf"
+            "gettext"
+            "pkg-config"
+            "libtool"
+            "debhelper"
+            "libpcap0.8-dev"
+            "libnl-genl-3-dev"
+            "libunwind8"
+            "libcups2"
+            "libmpc-dev"
+            "libmpc3"
+            "libmpfr-dev"
+            "libgmp-dev"
+            "libgmp10"
+            "libisl-dev"
+            "libppl-dev"
+            "libppl-c4"
+            "libppl14"
+            "libcloog-isl-dev"
+            "libcloog-isl4"
+            "libcloog-ppl-dev"
+            "libcloog-ppl1"
+            "systemd"
+            "ntpdate"
+            "xzip"
+            "bzip2"
+            "gzip"
+            "libfsntfs-utils"
+            "libpam0g"
+            "lprng"
+            "lshw"
+            "manpages"
+            "mc"
+            "ifenslave"
+            "ifmetric"
+			"ifupdown"
+            "ifupdown-extra"
+            "ifupdown-multi"			
+            "git"
+            "docbook-xsl"
+            "dos2unix"
+            "attr"
+            "avahi-autoipd"
+            "avahi-daemon"
+            "e2fsprogs"
+            "software-properties-common"
+            "python"
+            "python3"
+            "ntfs-3g"           
+            "scrounge-ntfs"
+            "libcap-ng0"
+            "libcap-dev"
+            "arping"
+            "bind9"
+            "bind9-doc"
+            "bind9utils"
+            "bridge-utils"
+            "cifs-utils"
+            "dnsutils"
+            "arptables"
+            "ethtool"
+            "hostapd"
+            "ntp"
+            "iptraf"
+            "iptraf-ng"
+            "isatapd"
+            "isc-dhcp-client"
+            "isc-dhcp-server"
+            "iw"
+            "miredo"            
+            "netplan"
+            "net-tools"
+            "nslcd"
+            "telnet"
+            "wireless-tools"
+            "wpasupplicant"
+            "wakeonlan"
+            "wide-dhcpv6-client"
+            "wide-dhcpv6-server"
+            "iptables-dev"
+            "macchanger"
+            "sendmail-base"
+            "ucarp"
+            "vlan"
+            "samba-common"
+            "samba"
+            "smbclient"
+            "libnss-winbind"
+            "libpam-winbind"
+            "winbind"
+            "tasksel"
+            "curl"
+			"xtables-addons-common"
+			"xtables-addons-dkms"
+			"libllvm${LLVM_V}"
+			"llvm-${LLVM_V}"
+			"llvm-${LLVM_V}-dev"
+			"llvm-${LLVM_V}-examples"
+			"llvm-${LLVM_V}-runtime"
+			"libllvm-${LLVM_V}-ocaml-dev"
+			"clang-${LLVM_V}"
+			"clang-tools-${LLVM_V}"
+			"libclang-common-${LLVM_V}-dev"
+			"libclang-${LLVM_V}-dev"
+			"libclang1-${LLVM_V}"
+			"clang-format-${LLVM_V}"
+			"libfuzzer-${LLVM_V}-dev"
+			"lldb-${LLVM_V}"
+			"lld-${LLVM_V}"
+			"libc++-${LLVM_V}-dev"
+			"libc++abi-${LLVM_V}-dev"
+			"libomp-${LLVM_V}-dev"
+				)
+
+apt-get -y autoremove
+apt-get -y update
+
+for package in "\${List[@]}";
+   do
+	 echo "installing \${package}"
+	 install_package \$package
+   done
+
+apt-get install -f
+apt-get -y remove --purge ureadahead
+apt-get -y update
+dpkg --configure -a
+
+apt-get -y autoremove
+apt-get clean
+
+ln -sf /usr/bin/genisoimage /usr/bin/mkisofs
+ln -sf /usr/bin/make /usr/bin/gmake
+ln -sf /run/resolvconf/resolv.conf /etc/resolv.conf
+
+echo $(echo "" | select-editor | grep "mcedit" | head -n1 | cut -d"." -f1) | select-editor
+systemctl daemon-reload
+timedatectl set-timezone 'Europe/Sofia'
+ntpdate bg.pool.ntp.org
+systemctl enable ntp
+systemctl enable systemd-timesyncd
+
+chown root /etc/rc.local
+chmod 755 /etc/rc.local
+systemctl restart rc-local
+
+apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+echo "deb https://download.mono-project.com/repo/${OS} stable-${DISTRO} main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+apt-get -y -qq install ca-certificates-mono mono-xsp4 mono-complete mono-devel
+
+cd /usr/local/src/jool-4.1.3
+./configure --prefix=/usr
+make
+make install
+cd ..
+rm -fr jool-4.1.3
+
+EOF
+
+	chmod +x $DEST/second-phase
+	do_chroot /second-phase
+	
+	if [ -f $DEST/second-phase ]; then
+		rm -f $DEST/second-phase
+	fi
+
+	chmod +x $DEST/install_packages
+	do_chroot /install_packages
+	
+	if [ -f $DEST/install_packages ]; then
+		rm -f $DEST/install_packages
+	fi
+	
+	if [ -f $DEST/etc/resolv.conf ]; then
+        rm -f $DEST/etc/resolv.conf
+	fi
+	
 	cd $BUILD
 	tar czf ${DISTRO}_${ARCH}_server_rootfs.tar.gz rootfs
 }
@@ -395,7 +724,31 @@ prepare_rootfs_desktop()
 		if [ ${ARCH} = "arm64" ];then
 	cat > "$DEST/type-phase" <<EOF
 #!/bin/bash
-apt-get update
+apt-get update -y
+apt-get install -y locales-all
+
+export LANG=en_US.UTF-8 
+export LANGUAGE=en_US.UTF-8
+export LC_CTYPE='en_US.UTF-8'
+export LC_NUMERIC=en_US.UTF-8
+export LC_TIME=en_US.UTF-8
+export LC_COLLATE='en_US.UTF-8'
+export LC_MONETARY=en_US.UTF-8
+export LC_MESSAGES='en_US.UTF-8'
+export LC_PAPER=en_US.UTF-8
+export LC_NAME=en_US.UTF-8
+export LC_ADDRESS=en_US.UTF-8
+export LC_TELEPHONE=en_US.UTF-8
+export LC_MEASUREMENT=en_US.UTF-8
+export LC_IDENTIFICATION=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+export DEBIAN_FRONTEND=noninteractive
+locale-gen en_US.UTF-8
+
+apt-get -y install openssh-server
+apt-get -y install python3-pip python3-setuptools
+
 apt-get -y install xubuntu-desktop
 
 apt-get -y autoremove
@@ -420,21 +773,40 @@ apt-get -y autoremove
 EOF
 	fi
 
-	chmod +x "$DEST/type-phase"
+	chmod +x $DEST/type-phase
 	do_chroot /type-phase
-	rm -f "$DEST/type-phase"
-        rm -f "$DEST/etc/resolv.conf"
+	
+	if [ -f $DEST/type-phase ]; then
+		rm -f $DEST/type-phase
+	fi
 
+	if [ -f $DEST/etc/resolv.conf ]; then
+        rm -f $DEST/etc/resolv.conf
+	fi
+	
 	cd $BUILD
 	tar czf ${DISTRO}_${ARCH}_desktop_rootfs.tar.gz rootfs
 }
 
 server_setup()
 {
-#	cat > "$DEST/etc/network/interfaces.d/eth0" <<EOF
-#auto eth0
-#iface eth0 inet dhcp
-#EOF
+	# cat > "$DEST/etc/network/interfaces.d/eth0" <<EOF
+# auto eth0
+# iface eth0 inet dhcp
+# EOF
+
+	cat > "$DEST/etc/network/interfaces" <<EOF
+# interfaces(5) file used by ifup(8) and ifdown(8)
+# Include files from /etc/network/interfaces.d:
+source-directory /etc/network/interfaces.d
+
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+
+EOF
 
 	cat > "$DEST/etc/hostname" <<EOF
 orangepi$BOARD
@@ -450,10 +822,29 @@ ff00::0 ip6-mcastprefix
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 EOF
-	cat > "$DEST/etc/resolv.conf" <<EOF
+	cat > "$DEST/run/resolvconf/resolv.conf" <<EOF
+nameserver 1.0.0.1
+nameserver 1.1.1.1
 nameserver 8.8.8.8
+nameserver 8.8.4.4
+#nameserver 2606:4700:4700::64
+#nameserver 2606:4700:4700::6400
+#nameserver 2001:4860:4860::6464
+#nameserver 2001:4860:4860::64
+#nameserver 2001:67c:2b0::4
+#nameserver 2001:67c:2b0::6
 EOF
 
+	cat > "$DEST/etc/modules-load.d/cups-filters.conf" <<EOF
+# Parallel printer driver modules loading for cups
+# LOAD_LP_MODULE was 'yes' in /etc/default/cups
+#lp
+#ppdev
+#parport_pc
+EOF
+
+	cp -rfa $BUILD/usr/* $DEST/usr/
+	
 	do_conffile
 	add_ssh_keygen_service
 	add_opi_python_gpio_libs
@@ -495,6 +886,41 @@ EOF
 	make -C $LINUX ARCH="${ARCH}" CROSS_COMPILE=$TOOLS headers_install INSTALL_HDR_PATH="$DEST/usr/local"
 
 	cp $EXTER/common/firmware $DEST/lib/ -rfa
+	
+	echo -e "\e[1;31m Start installing sunxi mali driver ... \e[0m"
+	
+	SUNXI_MALI="${ROOT}/sunxi-mali"
+	cd $SUNXI_MALI
+	
+	export CROSS_COMPILE=$TOOLS
+	export KDIR=$LINUX
+	export INSTALL_MOD_PATH=$DEST
+	export ARCH=$ARCH
+	
+	./build.sh -r $MALI_REL -i
+	./build.sh -r $MALI_REL -u
+	
+	echo -e "\e[1;31m Complete sunxi mali installation ... \e[0m"
+	
+	MALI_BLOBS="${ROOT}/mali-blobs"
+	
+	cd $MALI_BLOBS
+	
+	# install module
+	echo -e "\e[1;31m Start installing mali blobs ... \e[0m"
+	cp -a $MALI_REL/$ARCH/fbdev/lib* $DEST/usr/lib
+	echo -e "\e[1;31m Complete mali blobs installation ... \e[0m"	
+	
+	echo -e "\e[1;31m Start installing kernel sources ... \e[0m"
+	cd $ROOT/kernel
+	
+	KERNEL_SOURCE_ARC="${DEST}/usr/src/linux_kernel_sources.tar.xz"
+	
+	if [ ! -f $KERNEL_SOURCE_ARC ]; then
+		tar cvfJ $KERNEL_SOURCE_ARC *
+	fi
+
+	echo -e "\e[1;31m Complete kernel sources installation ... \e[0m"
 }
 
 build_rootfs()
@@ -505,25 +931,22 @@ build_rootfs()
 		if [ -f $BUILD/${DISTRO}_${ARCH}_desktop_rootfs.tar.gz ]; then
 			rm -rf $DEST
 			tar zxf $BUILD/${DISTRO}_${ARCH}_desktop_rootfs.tar.gz -C $BUILD
-		else
-			if [ -f $BUILD/${DISTRO}_${ARCH}_server_rootfs.tar.gz ]; then
-				rm -rf $DEST
-				tar zxf $BUILD/${DISTRO}_${ARCH}_server_rootfs.tar.gz -C $BUILD
-				prepare_rootfs_desktop
-			else
-				prepare_rootfs_server
-				prepare_rootfs_desktop
-
-			fi
 		fi
-		server_setup
+		
+		if [ -f $BUILD/${DISTRO}_${ARCH}_server_rootfs.tar.gz ]; then
+			rm -rf $DEST
+			tar zxf $BUILD/${DISTRO}_${ARCH}_server_rootfs.tar.gz -C $BUILD
+		fi
+
+		prepare_rootfs_desktop
 	else
 		if [ -f $BUILD/${DISTRO}_${ARCH}_server_rootfs.tar.gz ]; then
 			rm -rf $DEST
 			tar zxf $BUILD/${DISTRO}_${ARCH}_server_rootfs.tar.gz -C $BUILD
-		else
-			prepare_rootfs_server
 		fi
-		server_setup
+
+		prepare_rootfs_server
 	fi
+	
+	server_setup	
 }
